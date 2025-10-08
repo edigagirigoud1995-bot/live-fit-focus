@@ -46,6 +46,15 @@ export default function StudentDashboard() {
     }
   }, [isTracking]);
 
+  // Cleanup stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const handleLogout = () => {
     sessionStorage.removeItem("fitcoach_user");
     toast({
@@ -59,14 +68,19 @@ export default function StudentDashboard() {
     try {
       // Request camera permission and get video stream
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "user" } 
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
       });
       
       streamRef.current = stream;
       
-      // Attach stream to video element
+      // Attach stream to video element and start playing
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.error("Error playing video:", playError);
+        }
       }
       
       setIsTracking(true);
@@ -75,6 +89,7 @@ export default function StudentDashboard() {
         description: "Your engagement is being monitored",
       });
     } catch (error) {
+      console.error("Camera access error:", error);
       toast({
         title: "Camera access denied",
         description: "Please enable camera access to track engagement",
