@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { toast } from "@/hooks/use-toast";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [user, setUser] = useState<any>(null);
   const [engagement, setEngagement] = useState(85);
   const [isTracking, setIsTracking] = useState(false);
@@ -55,11 +57,17 @@ export default function StudentDashboard() {
 
   const handleStartTracking = async () => {
     try {
-      // Request camera permission
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Request camera permission and get video stream
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user" } 
+      });
       
-      // Stop the stream immediately (we're just checking permission)
-      stream.getTracks().forEach(track => track.stop());
+      streamRef.current = stream;
+      
+      // Attach stream to video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
       
       setIsTracking(true);
       toast({
@@ -76,6 +84,17 @@ export default function StudentDashboard() {
   };
 
   const handleStopTracking = () => {
+    // Stop all video tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    // Clear video element
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
     setIsTracking(false);
     toast({
       title: "Tracking stopped",
@@ -197,13 +216,15 @@ export default function StudentDashboard() {
 
             {isTracking && (
               <div className="space-y-4 animate-in fade-in duration-500">
-                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-primary">
-                  <div className="text-center">
-                    <Video className="h-16 w-16 text-primary mx-auto mb-2" aria-hidden="true" />
-                    <p className="text-sm text-muted-foreground">
-                      Camera feed (simulated)
-                    </p>
-                  </div>
+                <div className="aspect-video bg-muted rounded-lg overflow-hidden border-2 border-primary">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                    aria-label="Live camera feed for engagement tracking"
+                  />
                 </div>
 
                 <div>
